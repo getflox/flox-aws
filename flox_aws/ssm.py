@@ -4,6 +4,7 @@ from click import Abort
 from humanfriendly.tables import format_smart_table
 
 from flox_aws.kms import KMS
+from flox_aws.provider.vault import Provider
 
 
 class SSM(object):
@@ -136,3 +137,7 @@ def remove(flox, namespace, name):
 
     flox.ssm.remove(key)
     click.secho('Done.', fg='green')
+
+@ssm.command()
+def env():
+    Provider().session('test-ecs-deploy')

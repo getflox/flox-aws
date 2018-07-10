@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 "boto3" = "*"
 click = "*"
+plumbum = "*"
+schema = "*"
 
 [dev-packages]
 

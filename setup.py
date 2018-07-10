@@ -28,6 +28,10 @@ setup(
     entry_points='''
         [flox.cli_plugins]
         ssm=flox_aws.ssm:ssm
+        aws=flox_aws.aws:aws
+        
+        [flox.cli_plugins.config]
+        aws=flox_aws:config
     ''',
     install_requires=install_requires,
     tests_require=tests_require,
