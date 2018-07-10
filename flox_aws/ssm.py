@@ -1,4 +1,3 @@
-import boto3
 import click
 from click import Abort
 from humanfriendly.tables import format_smart_table
@@ -87,7 +86,10 @@ class SSM(object):
 @click.pass_obj
 def ssm(flox):
     """Manage SSM parameters"""
-    flox.ssm = SSM(boto3.client("ssm"), KMS(boto3.client("kms")))
+    provider = flox.container.get('aws-credentials-provider')
+    session = provider.session(flox.profile)
+
+    flox.ssm = SSM(session.client("ssm"), KMS(session.client("kms")))
 
 
 @ssm.command()
