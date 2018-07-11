@@ -38,7 +38,7 @@ class Provider(CredentialsProvider):
         stdout, stderr = p.communicate()
 
         if p.returncode != 0:
-            raise CredentialsException(p.stderr, p.returncode)
+            raise CredentialsException(p.stdout, p.returncode)
 
         env = dict(filter(
             lambda x: x[0].startswith('AWS_'),

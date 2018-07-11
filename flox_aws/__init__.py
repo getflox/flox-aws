@@ -1,8 +1,8 @@
 from schema import Optional, And, Use
 
 from flox_aws.extension.docker.repository import ElasticRepository
-from flox_aws.provider.vault import Provider as VaultProvider
 from flox_aws.provider.profile import Provider as ConfigProvider
+from flox_aws.provider.vault import Provider as VaultProvider
 
 
 def config():
@@ -14,7 +14,8 @@ def config():
 
 def services(container, config):
     provider = container.registry(
-        VaultProvider(config.profile_pattern) if config.credentials_provider == 'vault' else ConfigProvider(config.profile_pattern),
+        VaultProvider(config.profile_pattern) if config.credentials_provider == 'vault' else ConfigProvider(
+            config.profile_pattern),
         ['aws-credentials-provider']
     )
 
@@ -22,3 +23,5 @@ def services(container, config):
         ElasticRepository(provider),
         ['docker-repository']
     )
+
+    container.connect('docker-context', lambda x, profile: provider.credentials(profile).env)
