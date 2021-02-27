@@ -1,67 +1,81 @@
 import base64
 
+import click
+from click import Abort
 
-class KMSException(Exception):
+from floxcore.console import warning, success, error
+from floxcore.context import Flox
+
+
+@click.group()
+def kms():
+    """AWS KMS encryption/decryption support commands"""
     pass
 
 
-class KMS(object):
-    def __init__(self, kms, key='parameter_store_key'):
-        self.key = key
-        self.kms = kms
+@kms.command()
+@click.option("--key-id", help="Key ARN to be used for encryption (overwrite default one)", default="alias/flox")
+@click.option("--stdin", help="Read value from stdin", default=False, is_flag=True)
+@click.option("--with-strip/--without-strip", help="Strip new lines from input", default=True, is_flag=True)
+@click.argument("plaintext", required=False)
+@click.pass_obj
+def encrypt(flox: Flox, with_strip, key_id, stdin, plaintext, **kwargs):
+    """Encrypt given value with KMS"""
+    from flox_aws import get_session
 
-    def get_key_by_alias(self, alias=None):
-        """
-        Return KMS KeyId for give alias
-        :param alias:
-        :return:
-        """
-        aliases = self.kms.list_aliases()
+    if stdin:
+        plaintext = click.get_text_stream('stdin').read()
 
-        key_id = (next(iter(filter(
-            lambda x: x.get('AliasName') == 'alias/' + alias,
-            aliases.get('Aliases', {})
-        ))) or {}).get('TargetKeyId')
+    if not plaintext:
+        error("Empty plaintext value, you need to either provide argument or stdin value")
+        raise Abort
 
-        if key_id:
-            return key_id
+    if with_strip:
+        plaintext = plaintext.strip()
 
-        raise KMSException('Unable to locate KMS key with "{}" alias.'.format(alias))
+    session = get_session(flox)
+    kms = session.client("kms")
 
-    def list_aliases(self, aws=False):
-        """
-        :param aws: Include AWS build-in aliases
-        :return:
-        """
-        return filter(
-            lambda x: (x.get('AliasName').startswith('alias/aws') and aws) or not x.get('AliasName').startswith('alias/aws'),
-            self.kms.list_aliases().get('Aliases')
-        )
+    key_id = flox.settings.aws.kms or key_id
 
-    def encrypt(self, value, key=None):
-        """
-        Encrypt plain text value using KMS service and default or named key
-        :param value: Plain text value
-        :param key: Optionally, encryption key to be used
-        :return:
-        """
-        key_id = self.get_key_by_alias(key or self.key)
-        response = self.kms.encrypt(
-            KeyId=key_id,
-            Plaintext=bytes(value),
-        )
+    if key_id == "alias/flox":
+        aliases = kms.list_aliases()
+        create = False
+        if len(list(filter(lambda x: x["AliasName"] == key_id, aliases.get("Aliases")))) == 0:
+            warning(f"Requested encryption with default flox key: {key_id}, which doesn't exist.")
+            create = click.prompt(click.style("Would you like to create it?", fg="yellow"))
 
-        return base64.b64encode(response.get("CiphertextBlob")), key_id
+        if create:
+            key = kms.create_key()
+            alias = kms.create_alias(
+                AliasName=key_id,
+                TargetKeyId=key.get("KeyMetadata").get("KeyId")
+            )
+            success(f"Created Key with ARN: {key.get('KeyMetadata').get('Arn')}")
 
-    def decrypt(self, encrypted):
-        """
-        Decyrpt given value using AWS KMS service
-        :param encrypted: base64 encoded encrypted value
-        :return: Plain text decrypted value
-        """
-        try:
-            return self.kms.decrypt(
-                CiphertextBlob=base64.b64decode(encrypted)
-            ).get('Plaintext').decode("utf-8")
-        except Exception as e:
-            raise KMSException('Failed to decrypt given value')
+    encrypted = kms.encrypt(KeyId=key_id, Plaintext=plaintext)
+
+    click.echo(base64.b64encode(encrypted.get("CiphertextBlob")))
+
+
+@kms.command()
+@click.option("--with-base64-decode/--without-base64-decode", help="Input is base64 encoded, decode before decrypting",
+              is_flag=True, default=True)
+@click.option("--stdin", help="Read value from stdin", default=False, is_flag=True)
+@click.argument("encrypted", required=False)
+@click.pass_obj
+def decrypt(flox: Flox, with_base64_decode, stdin, encrypted):
+    """Decrypt given value with KMS"""
+
+    if stdin:
+        encrypted = click.get_text_stream('stdin').read()
+
+    if with_base64_decode:
+        encrypted = base64.b64decode(encrypted)
+
+    from flox_aws import get_session
+    session = get_session(flox)
+    kms = session.client("kms")
+    decrypted = kms.decrypt(CiphertextBlob=encrypted)
+
+    click.echo(decrypted.get("Plaintext"))
