@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "flox-aws"
+version = "0.1.0"
+homepage = "https://github.com/getflox/flox-aws"
+description = "AWS Cloud integration for flox"
+authors = ["Michal Przytulski <michal@przytulski.pl>", "Daniel Ancuta <whisller@gmail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.6"
+boto3 = "^1.12.17"
+flox-core = {path = "../flox-core"}
+plumbum = "^1.6.8"
+ecs-tool = "^0.9"
+requests = "^2.23.0"
+
+[tool.poetry.dev-dependencies]
+
+[tool.poetry.plugins."flox.plugin"]
+aws = "flox_aws:plugin"
+
+[build-system]
+requires = ["poetry>=0.12"]
+build-backend = "poetry.masonry.api"
