@@ -7,9 +7,9 @@ authors = ["Michal Przytulski <michal@przytulski.pl>", "Daniel Ancuta <whisller@
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = "^3.6"
+python = "^3.6.2"
 boto3 = "^1.12.17"
-flox-core = {path = "../flox-core"}
+flox-core = { git = "ssh://git@github.com/getflox/flox-core" }
 plumbum = "^1.6.8"
 ecs-tool = "^0.9"
 requests = "^2.23.0"
